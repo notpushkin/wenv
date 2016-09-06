@@ -1,0 +1,77 @@
+# This file must be used with "source bin/activate" *from bash*
+# you cannot run it directly
+
+WINE_VERSION="1.4.1"
+# WINE_ARCH="x86" # x64 not yet :/
+WINE_PATH="$HOME/.wine-versions/$WINE_VERSION"
+
+_install() {
+  kernel=$(uname -s)
+
+  if [ $kernel = "Darwin" ]; then
+    url="http://wine.playonlinux.com/binaries/darwin-x86/PlayOnLinux-wine-${WINE_VERSION}-linux-x86.pol"
+  elif [ $kernel = "Linux" ]; then
+    url="http://wine.playonlinux.com/binaries/linux-x86/PlayOnLinux-wine-${WINE_VERSION}-linux-x86.pol"
+  elif [ $kernel = "FreeBSD" ]; then
+    url="http://wine.playonlinux.com/binaries/freebsd-x86/PlayOnLinux-wine-${WINE_VERSION}-linux-x86.pol"
+  else
+    echo "Unsupported OS!"
+  fi
+
+  echo "Go to this URL:"
+  echo "    ${url}"
+  echo ""
+  echo "and unpack it as a tar.bz to:"
+  echo "    ${WINE_PATH}"
+}
+
+_activate() {
+  script_path=$( cd $(dirname ${BASH_SOURCE[0]}); pwd -P )
+
+  if [ ! -d "$WINE_PATH" ]; then
+    echo "Installing Wine ${WINE_VERSION}..."
+    _install || { echo "Install failed."; }
+  fi
+
+  export _WENV_OLD_PATH="$PATH"
+  export _WENV_OLD_WINEPREFIX="$WINEPREFIX"
+
+  export PATH="$WINE_PATH/bin:$PATH"
+  export WINEPREFIX="$(dirname $script_path)/prefix"
+
+  # This should detect bash and zsh, which have a hash command that must
+  # be called to get it to forget past commands.  Without forgetting
+  # past commands the $PATH changes we made may not be respected
+  if [ -n "$BASH" -o -n "$ZSH_VERSION" ] ; then
+    hash -r 2>/dev/null
+  fi
+}
+
+deactivate() {
+  if [ -n "$_WENV_OLD_PATH" ]; then
+    export PATH="$_WENV_OLD_PATH"
+    unset _WENV_OLD_PATH
+  fi
+
+  if [ -n "$_WENV_OLD_WINEPREFIX" ]; then
+    export WINEPREFIX="$_WENV_OLD_WINEPREFIX"
+    unset _WENV_OLD_WINEPREFIX
+  else
+    unset WINEPREFIX
+  fi
+
+  # Rehash
+  if [ -n "$BASH" -o -n "$ZSH_VERSION" ]; then
+    hash -r 2>/dev/null
+  fi
+
+  if [ ! "$1" = "nondestructive" ]; then
+    unset -f deactivate
+  fi
+}
+
+deactivate nondestructive
+_activate || true
+
+unset WINE_VERSION WINE_PATH
+unset -f _install _activate
